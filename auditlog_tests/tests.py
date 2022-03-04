@@ -928,6 +928,7 @@ class ModelFromDifferentDatabase(TestCase):
     """
     Should use the default database even when object is from other database (read-only, for example)
     """
+
     def setUp(self):
         self.obj = SimpleModel.objects.create(text="42 is the answer")
 
@@ -935,7 +936,9 @@ class ModelFromDifferentDatabase(TestCase):
         msg = "The log should not try to write to the same database as the object"
 
         instance = self.obj
-        instance._state.db = 'replica'  # simulate object obtained from a different database (read only)
+        instance._state.db = (
+            "replica"  # simulate object obtained from a different database (read only)
+        )
 
         changes = model_instance_diff(None, instance)
 
@@ -944,6 +947,6 @@ class ModelFromDifferentDatabase(TestCase):
             action=LogEntry.Action.CREATE,
             changes=json.dumps(changes),
         )
-        self.assertEqual(log_entry._state.db, "default", msg=msg)  # must be created in default database
-
-
+        self.assertEqual(
+            log_entry._state.db, "default", msg=msg
+        )  # must be created in default database
