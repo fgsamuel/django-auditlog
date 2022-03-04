@@ -11,7 +11,6 @@ from django.db.models.signals import pre_save
 from django.http import HttpResponse
 from django.test import RequestFactory, TestCase
 from django.utils import dateformat, formats, timezone
-from django.utils.connection import ConnectionDoesNotExist
 
 from auditlog.diff import model_instance_diff
 from auditlog.middleware import AuditlogMiddleware
@@ -940,14 +939,11 @@ class ModelFromDifferentDatabase(TestCase):
 
         changes = model_instance_diff(None, instance)
 
-        try:
-            log_entry = LogEntry.objects.log_create(
-                instance,
-                action=LogEntry.Action.CREATE,
-                changes=json.dumps(changes),
-            )
-            self.assertEqual(log_entry._state.db, "default", msg=msg)  # must be created in default database
-        except ConnectionDoesNotExist as e:
-            self.assertTrue(False, msg=msg)
+        log_entry = LogEntry.objects.log_create(
+            instance,
+            action=LogEntry.Action.CREATE,
+            changes=json.dumps(changes),
+        )
+        self.assertEqual(log_entry._state.db, "default", msg=msg)  # must be created in default database
 
 
