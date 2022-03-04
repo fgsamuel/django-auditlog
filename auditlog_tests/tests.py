@@ -151,6 +151,25 @@ class SimpleModelTest(TestCase):
         self.setUp()
         self.test_create()
 
+    def test_create_log_to_object_from_other_database(self):
+        msg = "The log should not try to write to the same database as the object"
+
+        instance = self.obj
+        instance._state.db = (
+            "replica"  # simulate object obtained from a different database (read only)
+        )
+
+        changes = model_instance_diff(None, instance)
+
+        log_entry = LogEntry.objects.log_create(
+            instance,
+            action=LogEntry.Action.CREATE,
+            changes=json.dumps(changes),
+        )
+        self.assertEqual(
+            log_entry._state.db, "default", msg=msg
+        )  # must be created in default database
+
 
 class AltPrimaryKeyModelTest(SimpleModelTest):
     def setUp(self):
@@ -922,31 +941,3 @@ class NoDeleteHistoryTest(TestCase):
             list(entries.values_list("action", flat=True)),
             [LogEntry.Action.CREATE, LogEntry.Action.UPDATE, LogEntry.Action.DELETE],
         )
-
-
-class ModelFromDifferentDatabase(TestCase):
-    """
-    Should use the default database even when object is from other database (read-only, for example)
-    """
-
-    def setUp(self):
-        self.obj = SimpleModel.objects.create(text="42 is the answer")
-
-    def test_create_log_to_object_from_other_database(self):
-        msg = "The log should not try to write to the same database as the object"
-
-        instance = self.obj
-        instance._state.db = (
-            "replica"  # simulate object obtained from a different database (read only)
-        )
-
-        changes = model_instance_diff(None, instance)
-
-        log_entry = LogEntry.objects.log_create(
-            instance,
-            action=LogEntry.Action.CREATE,
-            changes=json.dumps(changes),
-        )
-        self.assertEqual(
-            log_entry._state.db, "default", msg=msg
-        )  # must be created in default database
